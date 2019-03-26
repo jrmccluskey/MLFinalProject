@@ -1,0 +1,21 @@
+---
+title: "Stor 565 Final Project"
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+readme <- read_excel("DataDownload.xls", sheet = 1)
+varlist <- read_excel("DataDownload.xls", sheet = 2)
+supCounty <- read_excel("DataDownload.xls", sheet = 3)
+supState <- read_excel("DataDownload.xls", sheet = 4)
+access <- read_excel("DataDownload.xls", sheet = 5)
+stores <- read_excel("DataDownload.xls", sheet = 6)
+restaurants <- read_excel("DataDownload.xls", sheet = 7)
+assistance <- read_excel("DataDownload.xls", sheet = 8)
+insecurity <- read_excel("DataDownload.xls", sheet = 9)
+priceTaxes <- read_excel("DataDownload.xls", sheet = 10)
+local <- read_excel("DataDownload.xls", sheet = 11)
+```
+
+
