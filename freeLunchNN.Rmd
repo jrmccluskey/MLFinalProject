@@ -1,0 +1,107 @@
+---
+title: "Stor 565 Final Project"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+fullData = read.csv("food_data.csv")
+```
+
+```{r}
+library(neuralnet)
+```
+
+```{r}
+# Only use if you need to look for some variables you can use
+#plot(PCT_FREE_LUNCH14~., data = fullData)
+```
+
+
+```{r}
+colNames = c("PCT_FREE_LUNCH14", "PCT_LACCESS_POP15", "PCT_LACCESS_SNAP15", "PCT_LACCESS_CHILD15", "PCT_LACCESS_WHITE15", "PCT_LACCESS_BLACK15", "PCT_LACCESS_HISP15", "PCT_LACCESS_NHASIAN15", "PCT_LACCESS_NHNA15", "PCT_LACCESS_NHPI15", "PCT_LACCESS_MULTIR15", "PCT_SNAP16", "PC_SNAPBEN15", "PC_WIC_REDEMP12", "PCT_OBESE_ADULTS13", "FOODINSEC_13_15", "FOODINSEC_CHILD_03_11", "MILK_PRICE10", "PCT_NHWHITE10", "PCT_NHBLACK10", "PCT_HISP10", "PCT_NHASIAN10", "PCT_NHNA10", "PCT_NHPI10", "MEDHHINC15", "CHILDPOVRATE15", "SNAPS16")
+cleanData = fullData[complete.cases(fullData[colNames]),]
+nnData = cleanData[names(cleanData) %in% colNames]
+```
+
+```{r}
+library(caTools)
+indexes <- sample.split(seq_len(nrow(nnData)), 0.5)
+maxs <-apply(nnData, 2, max)
+mins <- apply(nnData, 2, min)
+scaled <- as.data.frame(scale(nnData, center = mins, scale = maxs - mins))
+train = scaled[indexes,]
+test = scaled[!indexes,]
+trainUS = nnData[indexes,]
+testUS = nnData[!indexes,]
+```
+
+```{r}
+library(caret)
+set.seed(15)
+# Partition data into folds, set up storage for calculation
+folds <- createFolds(train$PCT_FREE_LUNCH14, k = 5, list = TRUE, returnTrain = FALSE)
+errorStore = array(rep(0, 5*15*9), dim = c(5, 15, 9))
+
+for(i in c(1:5)){ # Over which fold is held out
+  for(j in c(2:15)) { # Over number of neurons in hidden layer 1
+    for(k in c(2:9)) { # Over number of neurons in hidden player 2
+      valNet = neuralnet(PCT_FREE_LUNCH14~., data = train[-folds[[i]],], hidden = c(j,k), linear.output = TRUE)
+      
+      pred <- compute(valNet, train[folds[[i]],])
+
+      pred_ <- pred$net.result*(max(nnData$PCT_FREE_LUNCH14) -  min(nnData$PCT_FREE_LUNCH14)) + min(nnData$PCT_FREE_LUNCH14)
+
+      testReal <- (train[folds[[i]],]$PCT_FREE_LUNCH14) * (max(nnData$PCT_FREE_LUNCH14) -                              min(nnData$PCT_FREE_LUNCH14))+min(nnData$PCT_FREE_LUNCH14)
+
+      MSE.nn <- sum((testReal - pred_)^2)/nrow(train[folds[[i]],])
+      errorStore[i,j,k] = MSE.nn
+    }
+  }
+}
+
+errorStore
+```
+
+```{r}
+cvMSE = array(rep(0, 15*9), dim = c(15,9))
+for(i in c(1:15)) {
+  for(j in c(1:9)) {
+    cvMSE[i,j] = mean(errorStore[1:5,i,j])
+  }
+}
+cvMSE
+```
+
+```{r}
+finalNN = neuralnet(PCT_FREE_LUNCH14~., data = train, hidden = c(3,2), linear.output = TRUE)
+```
+
+```{r}
+plot(finalNN)
+```
+
+```{r}
+predVals <- compute(finalNN, test)
+
+predVals_ <- predVals$net.result*(max(nnData$PCT_FREE_LUNCH14) - min(nnData$PCT_FREE_LUNCH14)) + min(nnData$PCT_FREE_LUNCH14)
+
+testR <- (test$PCT_FREE_LUNCH14) * (max(nnData$PCT_FREE_LUNCH14) -                              min(nnData$PCT_FREE_LUNCH14))+min(nnData$PCT_FREE_LUNCH14)
+
+MSE.nn <- sum((testR - predVals_)^2)/nrow(test)
+
+MSE.nn
+(MSE.nn)^.5
+```
+
+```{r}
+plot(predVals_~testUS$PCT_FREE_LUNCH14)
+abline(1,1, col = 'red')
+```
+
+```{r}
+errors = testR - predVals_
+median(abs(errors))
+hist(errors)
+```
+
